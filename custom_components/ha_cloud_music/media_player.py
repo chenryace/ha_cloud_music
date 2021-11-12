@@ -1,5 +1,8 @@
 import json, os, logging, time, datetime, random, re, uuid, math, base64, asyncio, aiohttp
 from homeassistant.components.media_player import MediaPlayerEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.network import get_url
 from homeassistant.components.media_player.const import (
     MEDIA_TYPE_MUSIC,MEDIA_TYPE_URL, SUPPORT_PAUSE, SUPPORT_PLAY, SUPPORT_BROWSE_MEDIA, 
@@ -35,23 +38,20 @@ from .source_vlc import MediaPlayerVLC
 from .source_mpd import MediaPlayerMPD
 from .source_other import MediaPlayerOther
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    # 显示模式 全屏：fullscreen
-    show_mode = config.get("show_mode", "default")
-    
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    config = entry.data
     # TTS相关配置
     tts_before_message = config.get("tts_before_message", '')
     tts_after_message = config.get("tts_after_message", '')
     tts_mode = config.get("tts_mode", 4)
-
-    #### （启用/禁用）配置 #### 
-
     # 是否开启语音文字处理程序（默认启用）
     is_voice = config.get('is_voice', True)
 
-    ################### 系统配置 ###################
-
-    ################### 定义实体类 ###################    
+    ################### 定义实体类 ###################
     # 播放器实例
     api_config = ApiConfig(hass.config.path(".shaonianzhentan/ha_cloud_music"))
     # 创建媒体文件夹
@@ -75,7 +75,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         # 注册菜单栏
         hass.components.frontend.async_register_built_in_panel(
             "iframe", NAME, ICON, DOMAIN,
-            { "url": ROOT_PATH + "/index.html?ver=" + VERSION + "&show_mode=" + show_mode + "&uid=" + uid },
+            { "url": ROOT_PATH + "/index.html?ver=" + VERSION + "&uid=" + uid },
             require_admin=False
         )
     # 开始登录
@@ -108,8 +108,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         _ApiVoice = ApiVoice(hass, mp.api_music)
         hass.bus.async_listen('ha_voice_text_event', _ApiVoice.text_event)
 
-    ################### 注册服务 ################### 
-
+    ################### 注册服务 ###################
     # 显示插件信息
     _LOGGER.info('''
 -------------------------------------------------------------------
@@ -124,16 +123,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     hass.http.register_static_path('/media-local', hass.config.path("media/ha_cloud_music"), False)
     hass.http.register_static_path(WEB_PATH, hass.config.path("custom_components/ha_cloud_music/local"), False)
     # 注册网关接口
-    hass.http.register_view(ApiView)    
+    hass.http.register_view(ApiView)
     # 添加状态卡片
     hass.components.frontend.add_extra_js_url(hass, WEB_PATH + '/card/ha_cloud_music.js?v=' + VERSION)
-    ################### 注册静态目录与接口网关 ###################
-    return True   
-
-# 集成安装
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    setup_platform(hass, config_entry.data, async_add_entities)
-    return True
+    async_add_entities([mp], True)
 
 ###################媒体播放器##########################
 class MediaPlayer(MediaPlayerEntity):

@@ -1,37 +1,33 @@
-"""Config flow for Hello World integration."""
-import logging
+from __future__ import annotations
 
-import voluptuous as vol
+from typing import Any
 
-from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlow
+from homeassistant.data_entry_flow import FlowResult
 
-from .const import DOMAIN  # pylint:disable=unused-import
-
-_LOGGER = logging.getLogger(__name__)
+from .const import DOMAIN
 
 DATA_SCHEMA = vol.Schema({
-    vol.Required("api_url", default = ""): str,
+    vol.Required("api_url", default = "http://localhost:3000"): str,
     vol.Optional("find_api_url", default = ""): str,
     vol.Optional("mpd_host", default = ""): str,
     vol.Optional("user", default = ""): str,
     vol.Optional("password", default = ""): str
 })
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class SimpleConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
-    async def async_step_user(self, user_input=None):        
-        errors = {}
-        if DOMAIN in self.hass.data:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the initial step."""
+        if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
 
-        # 如果输入内容不为空，则进行验证
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-        
-        # 显示表单
-        return self.async_show_form(
-            step_id="user", data_schema=DATA_SCHEMA, errors=errors
-        )
+        if user_input is None:
+            errors = {}
+            return self.async_show_form(step_id="user", data_schema=DATA_SCHEMA, errors=errors)
+
+        return self.async_create_entry(title=DOMAIN, data=user_input)

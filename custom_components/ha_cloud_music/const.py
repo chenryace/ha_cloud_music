@@ -5,3 +5,5 @@ VERSION = '4.7.1'
 DOMAIN_API = '/' + DOMAIN + '-api'
 WEB_PATH = '/' + DOMAIN + '-web'
 ROOT_PATH = '/' + DOMAIN + '-local/' + VERSION
+
+PLATFORMS = ["media_player"]
